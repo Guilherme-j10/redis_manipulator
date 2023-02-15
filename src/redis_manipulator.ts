@@ -84,7 +84,7 @@ export class redis_manipulator_operation {
 
   async insert_operation<T>(unique_id: string, key: string, value: T | Object): Promise<boolean> {
 
-    if (typeof unique_id !== 'string') throw { message: 'The unique have to be a string' }
+    if (typeof unique_id !== 'string') throw { message: 'The uniqueid have to be a string' }
 
     if (typeof value !== 'object') throw { message: 'The data provided must be a object.' }
 
