@@ -1,0 +1,18 @@
+version: '3.7'
+services:
+  redis:
+    image: 'bitnami/redis:latest'
+    volumes:
+      - redisdata:/bitnami/redis/data
+    environment:
+      - REDIS_PORT_NUMBER=7000
+      - REDIS_PASSWORD=testeteste
+    ports:
+      - '7000:7000'
+    networks:
+      - redis_module
+networks:
+  redis_module:
+    external: true
+volumes:
+  redisdata:
