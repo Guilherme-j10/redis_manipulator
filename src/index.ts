@@ -3,36 +3,49 @@ import { v4 } from 'uuid';
 
 const redis_handle = new redis_manipulator_operation();
 
-// console.time();
-// for (let i = 0; i < 10; i++) {
+const insert = () => {
 
-//   (async () => {
-    
-//     const object_data = {
-//       id: v4(),
-//       nome: 'guilherme',
-//       sobrenome: 'campos',
-//       idade: i,
-//     };
+  console.time();
+  for (let i = 0; i < 1_123_123; i++) {
 
-//     try {
+    (async () => {
 
-//       await redis_handle.insert(object_data.id, 'cliente', object_data);
+      const object_data = {
+        id: `${i}-${v4()}`,
+        nome: 'guilherme',
+        sobrenome: 'campos',
+        idade: i,
+      };
 
-//     } catch (error: any) {
+      try {
 
-//       console.log(error.message);
+        await redis_handle.insert(object_data.id, 'cliente', object_data);
 
-//     }
+      } catch (error: any) {
 
-//   })()
+        console.log(error.message);
 
-// }
-// console.timeEnd();
+      }
 
-(async () => {
+    })()
 
-  const data = await redis_handle.list_in_order('cliente');
-  console.log(data);
+  }
+  console.timeEnd();
 
-})()
+}
+
+const read = () => {
+
+  (async () => {
+
+    console.time();
+    const data = await redis_handle.list_in_order('cliente');
+    console.log(data.length);
+    console.timeEnd();
+  
+  })()
+
+}
+
+insert();
+//read();

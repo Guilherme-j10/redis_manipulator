@@ -16,7 +16,6 @@ export type Merged_information<T> = T & { arr_index: any }
 export class redis_manipulator_operation {
 
   private redis_connection: Redis;
-
   private pipeline_operations = [] as StandbyOperations[];
 
   constructor(options_connection_props?: RedisOptions, private debug = false) {
@@ -47,8 +46,8 @@ export class redis_manipulator_operation {
       for (const operation of this.pipeline_operations) {
 
         try { await this.insert_operation(operation.unique_id, operation.key, operation.value) } catch (error: any) {
-          
-          if(this.debug) console.log(error.message);
+
+          if (this.debug) console.log(error.message);
 
         }
 
@@ -82,6 +81,37 @@ export class redis_manipulator_operation {
 
   }
 
+  async scan_all_keys(key: string): Promise<string[]> {
+
+    return new Promise((resolve) => {
+
+      const stream = this.redis_connection.scanStream({
+        match: `${key}:*`,
+        count: 3000
+      }) as any;
+
+      let all_keys_on_database = [] as string[];
+
+      stream.on('data', (result_keys: string) => {
+
+        for (let i = 0; i < result_keys.length; i++) {
+
+          all_keys_on_database.push(result_keys[i])
+
+        }
+
+      });
+
+      stream.on('end', () => {
+
+        resolve(all_keys_on_database);
+
+      });
+
+    })
+
+  }
+
   async insert_operation<T>(unique_id: string, key: string, value: T | Object): Promise<boolean> {
 
     if (typeof unique_id !== 'string') throw { message: 'The uniqueid have to be a string' }
@@ -92,7 +122,7 @@ export class redis_manipulator_operation {
 
     if (!have_on_data.length) throw { message: `The unique_id: ${unique_id} need be inside the data.` }
 
-    const length_redis_keys = await this.redis_connection.keys(`${key}:*`);
+    const length_redis_keys = await this.scan_all_keys(key);
 
     value = { ...value, arr_index: length_redis_keys.length }
 
@@ -104,7 +134,7 @@ export class redis_manipulator_operation {
 
   async list_in_order<T>(key: string): Promise<T[]> {
 
-    const get_all = await this.redis_connection.keys(`${key}:*`);
+    const get_all = await this.scan_all_keys(key);
 
     const complete_all_data = [] as Merged_information<T>[];
     let reorder_data_on_list = [] as T[];
