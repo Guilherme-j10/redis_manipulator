@@ -6,6 +6,12 @@ type StandbyOperations = {
   unique_id: string
 }
 
+type UpdateOperationPipe <T> = {
+  unique_id: string,
+  key: string,
+  value: T
+}
+
 export interface IFindContentByScanStream<T> {
   target: keyof T | string,
   source: any
@@ -17,8 +23,9 @@ export class redis_manipulator_operation {
 
   private redis_connection: Redis;
   private pipeline_operations = [] as StandbyOperations[];
+  private pipeline_operations_update = [] as UpdateOperationPipe<any>[];
 
-  constructor(options_connection_props?: RedisOptions, private debug = false) {
+  constructor(options_connection_props?: RedisOptions, private debug = true) {
 
     let redis_connection_props: RedisOptions = {
       password: 'testeteste',
@@ -36,10 +43,33 @@ export class redis_manipulator_operation {
     this.redis_connection = new Redis(redis_connection_props);
 
     this.non_block_operation_insert();
+    this.non_block_operation_update();
 
   }
 
-  async non_block_operation_insert(): Promise<void> {
+  private async non_block_operation_update(): Promise<void> {
+
+    if(this.pipeline_operations_update.length) {
+
+      for(const update_operation of this.pipeline_operations_update) {
+
+        try { await this.update_operation(update_operation.unique_id, update_operation.key, update_operation.value) } catch (error: any) {
+          
+          if(this.debug)  console.log('REDIS MANIPULATOR UPDATE ERROR: ', error.message || error);
+
+        }
+
+      }
+
+      this.pipeline_operations_update = [];
+
+    }
+
+    setTimeout(async () => await this.non_block_operation_update(), 5);
+
+  }
+
+  private async non_block_operation_insert(): Promise<void> {
 
     if (this.pipeline_operations.length) {
 
@@ -47,7 +77,7 @@ export class redis_manipulator_operation {
 
         try { await this.insert_operation(operation.unique_id, operation.key, operation.value) } catch (error: any) {
 
-          if (this.debug) console.log(error.message);
+          if (this.debug) console.log('REDIS MANIPULATOR INSERT ERROR: ', error.message || error);
 
         }
 
@@ -57,7 +87,7 @@ export class redis_manipulator_operation {
 
     }
 
-    setTimeout(async () => await this.non_block_operation_insert(), 10);
+    setTimeout(async () => await this.non_block_operation_insert(), 5);
 
   }
 
@@ -81,7 +111,7 @@ export class redis_manipulator_operation {
 
   }
 
-  async scan_all_keys(key: string): Promise<string[]> {
+  private async scan_all_keys(key: string): Promise<string[]> {
 
     return new Promise((resolve) => {
 
@@ -112,7 +142,18 @@ export class redis_manipulator_operation {
 
   }
 
-  async insert_operation<T>(unique_id: string, key: string, value: T | Object): Promise<boolean> {
+  async unique_id_exists(unique_id: string, key: string): Promise<boolean> {
+
+    const all_keys = await this.scan_all_keys(key);
+    const find_key = all_keys.filter(keys => keys === `${key}:${unique_id}`);
+
+    if(find_key.length) return true;
+
+    return false;
+
+  }
+
+  private async insert_operation<T>(unique_id: string, key: string, value: T | Object): Promise<boolean> {
 
     if (typeof unique_id !== 'string') throw { message: 'The uniqueid have to be a string' }
 
@@ -148,7 +189,10 @@ export class redis_manipulator_operation {
 
     for(const data of complete_all_data) {
 
-      reorder_data_on_list[data.arr_index] = data; 
+      reorder_data_on_list[data.arr_index] = (() => {
+        delete data.arr_index;
+        return data;
+      })(); 
 
     }
 
@@ -165,6 +209,14 @@ export class redis_manipulator_operation {
   }
 
   async update<T>(unique_id: string, key: string, value: T): Promise<boolean> {
+
+    this.pipeline_operations_update.push({ unique_id, key, value });
+
+    return true;
+
+  }
+
+  private async update_operation(unique_id: string, key: string, value: any): Promise<boolean> {
 
     const get_current_data = await this.redis_connection.get(`${key}:${unique_id}`);
     const current_data = this.json_decode(get_current_data);

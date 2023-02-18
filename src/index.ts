@@ -1,11 +1,17 @@
 import { redis_manipulator_operation } from "./redis_manipulator";
 import { v4 } from 'uuid';
 
+type DataStructure = {
+  id: string,
+  nome: string,
+  sobrenome: string,
+  idade: number
+}
+
 const redis_handle = new redis_manipulator_operation();
 
-const insert = () => {
+const insert_data = async () => {
 
-  console.time();
   for (let i = 0; i < 10; i++) {
 
     (async () => {
@@ -30,22 +36,29 @@ const insert = () => {
     })()
 
   }
-  console.timeEnd();
 
 }
 
-const read = () => {
+const update_all = async () => {
 
-  (async () => {
+  const all_elements = await redis_handle.list_all<DataStructure>('cliente');
 
-    console.time();
-    const data = await redis_handle.list_all('cliente');
-    console.log(data);
-    console.timeEnd();
-  
-  })()
+  for(let node of all_elements) {
+
+    (async () => {
+
+      const random_number = Math.floor(Math.random() * 1000);
+
+      await redis_handle.update(node.id, 'cliente', {
+        ...node,
+        idade: random_number
+      });
+
+    })()
+
+  }
 
 }
 
-//insert();
-read();
+//insert_data();
+//update_all();
