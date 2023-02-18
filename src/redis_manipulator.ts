@@ -6,7 +6,7 @@ type StandbyOperations = {
   unique_id: string
 }
 
-type UpdateOperationPipe <T> = {
+type UpdateOperationPipe<T> = {
   unique_id: string,
   key: string,
   value: T
@@ -49,13 +49,13 @@ export class redis_manipulator_operation {
 
   private async non_block_operation_update(): Promise<void> {
 
-    if(this.pipeline_operations_update.length) {
+    if (this.pipeline_operations_update.length) {
 
-      for(const update_operation of this.pipeline_operations_update) {
+      for (const update_operation of this.pipeline_operations_update) {
 
         try { await this.update_operation(update_operation.unique_id, update_operation.key, update_operation.value) } catch (error: any) {
-          
-          if(this.debug)  console.log('REDIS MANIPULATOR UPDATE ERROR: ', error.message || error);
+
+          if (this.debug) console.log('REDIS MANIPULATOR UPDATE ERROR: ', error.message || error);
 
         }
 
@@ -147,7 +147,7 @@ export class redis_manipulator_operation {
     const all_keys = await this.scan_all_keys(key);
     const find_key = all_keys.filter(keys => keys === `${key}:${unique_id}`);
 
-    if(find_key.length) return true;
+    if (find_key.length) return true;
 
     return false;
 
@@ -180,19 +180,19 @@ export class redis_manipulator_operation {
     const complete_all_data = [] as Merged_information<T>[];
     let reorder_data_on_list = [] as T[];
 
-    for(const key of get_all) {
+    for (const key of get_all) {
 
       const data_on_redis = await this.redis_connection.get(key);
       complete_all_data.push(this.json_decode(data_on_redis));
 
     }
 
-    for(const data of complete_all_data) {
+    for (const data of complete_all_data) {
 
       reorder_data_on_list[data.arr_index] = (() => {
         delete data.arr_index;
         return data;
-      })(); 
+      })();
 
     }
 
