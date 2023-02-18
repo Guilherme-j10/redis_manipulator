@@ -6,7 +6,7 @@ const redis_handle = new redis_manipulator_operation();
 const insert = () => {
 
   console.time();
-  for (let i = 0; i < 1_123_123; i++) {
+  for (let i = 0; i < 10; i++) {
 
     (async () => {
 
@@ -39,13 +39,13 @@ const read = () => {
   (async () => {
 
     console.time();
-    const data = await redis_handle.list_in_order('cliente');
-    console.log(data.length);
+    const data = await redis_handle.list_all('cliente');
+    console.log(data);
     console.timeEnd();
   
   })()
 
 }
 
-insert();
-//read();
+//insert();
+read();

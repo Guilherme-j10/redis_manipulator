@@ -132,7 +132,7 @@ export class redis_manipulator_operation {
 
   }
 
-  async list_in_order<T>(key: string): Promise<T[]> {
+  async list_all<T>(key: string): Promise<T[]> {
 
     const get_all = await this.scan_all_keys(key);
 
@@ -152,75 +152,53 @@ export class redis_manipulator_operation {
 
     }
 
-    return reorder_data_on_list;
+    return reorder_data_on_list.filter(data => data);
 
   }
 
-  async remove<T>(key: string, index: number): Promise<boolean> {
+  async remove(unique_id: string, key: string): Promise<boolean> {
 
-    const data_from_key = await this.select(key);
-
-    data_from_key.splice(index, 1);
-
-    await this.redis_connection.set(key, JSON.stringify(data_from_key));
+    await this.redis_connection.del(`${key}:${unique_id}`);
 
     return true;
 
   }
 
-  async update<T>(key: string, value: Merged_information<T>): Promise<boolean> {
+  async update<T>(unique_id: string, key: string, value: T): Promise<boolean> {
 
-    const data_from_key = await this.select(key);
+    const get_current_data = await this.redis_connection.get(`${key}:${unique_id}`);
+    const current_data = this.json_decode(get_current_data);
 
-    const array_position = value.arr_index;
+    const new_value = { ...current_data, ...value };
 
-    delete value.arr_index;
-
-    data_from_key[array_position] = { ...value };
-
-    await this.redis_connection.set(key, JSON.stringify(data_from_key));
+    await this.redis_connection.set(`${key}:${unique_id}`, this.json_encode(new_value));
 
     return true;
 
   }
 
-  async select<T>(key: string, find_where?: IFindContentByScanStream<T>): Promise<Merged_information<T>[]> {
+  async select<T>(unique_id: string, key: string): Promise<T> {
 
-    const data_in_sotrage = await this.redis_connection.get(key);
-    const data_work = JSON.parse(data_in_sotrage as string) as Merged_information<T>[];
+    const key_value = await this.redis_connection.get(`${key}:${unique_id}`);
+    const data = this.json_decode(key_value);
 
-    if (find_where) {
+    delete data.arr_index;
 
-      let findedObject = [];
+    return data as T;
 
-      for (let i in data_work) {
+  }
 
-        for (let x in data_work[i]) {
+  async find_element<T>(key: string, property: keyof T, value: any): Promise<T[]> {
 
-          if (x === find_where.target && `${data_work[i][x as keyof Object]}`.toLowerCase() === `${find_where.source}`.toLowerCase()) {
+    const all_elements = await this.list_all(key) as any[];
 
-            findedObject.push({ ...data_work[i], arr_index: i })
+    const elements = all_elements.filter(element => (element[property as keyof Object] as any) === value);
+    const pure_data_elements = elements.map(data => {
+      delete data.arr_index;
+      return data;
+    })
 
-          }
-
-        }
-
-      }
-
-      return findedObject || [];
-
-    }
-
-    for (let z in data_work) {
-
-      data_work[z] = {
-        ...data_work[z],
-        arr_index: z
-      }
-
-    }
-
-    return data_work || [];
+    return pure_data_elements as T[];
 
   }
 
